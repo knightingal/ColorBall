@@ -46,13 +46,28 @@ export class Game extends React.Component<{}, {}> {
         super(props);
     }
 
+    handleClick(e:React.MouseEvent<HTMLDivElement>) {
+        const x = e.nativeEvent.offsetX;
+        const y = e.nativeEvent.offsetY;
+        if (x < this.OFFSET_LEFT || y < this.OFFSET_TOP || x > this.GRID_COUNT * this.GRID_SIZE || y > this.GRID_COUNT * this.GRID_SIZE) {
+            return;
+        }
+        const gridX = Math.floor((x - this.OFFSET_LEFT) / this.GRID_SIZE);
+        const gridY = Math.floor((y - this.OFFSET_LEFT) / this.GRID_SIZE);
+        console.log(`touch column ${gridX}, line ${gridY}`);
+
+    }
+
 
     render() {
         return (
+            <div>
             <svg className="game-svg" width="1000px" height="1000px" version="1.1" xmlns="http://www.w3.org/2000/svg">
                 {this.createHLines()}        
                 {this.createVLines()}        
             </svg>
+            <div className="touch-layer" onClick={(e)=>this.handleClick(e)}></div>
+            </div>
         )
     }
 }
