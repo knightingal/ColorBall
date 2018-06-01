@@ -4,15 +4,15 @@ interface BallInfo {
     gridX: number;
     gridY: number;
 }
-class BallComponent extends React.Component<{ballInfo: BallInfo},{}> {
+class BallComponent extends React.Component<{ballInfo: BallInfo, selected: boolean},{}> {
     static margin: number = 3;
-    constructor(props: {ballInfo: BallInfo}) {
+    constructor(props: {ballInfo: BallInfo, selected: boolean}) {
         super(props);
     }
 
     render() {
         return <rect 
-            className="rect-ball"
+            className={this.props.selected ? "rect-ball-selected": "rect-ball"}
             x={Game.OFFSET_TOP + this.props.ballInfo.gridX * Game.GRID_SIZE + BallComponent.margin} 
             y={Game.OFFSET_TOP + this.props.ballInfo.gridY * Game.GRID_SIZE + BallComponent.margin} 
             width={Game.GRID_SIZE - BallComponent.margin * 2}
@@ -22,12 +22,24 @@ class BallComponent extends React.Component<{ballInfo: BallInfo},{}> {
 
 }
 
-export class Game extends React.Component<{}, {balls: Array<BallInfo>}> {
+export class Game extends React.Component<{}, {balls: Array<BallInfo>, selectedBallId:number}> {
     static OFFSET_TOP = 3;
     static OFFSET_LEFT = 3;
     static GRID_SIZE = 30;
     static GRID_COUNT = 9;
-    static ballIdSeq = 1;
+    ballIdSeq = 1;
+
+    ballMatrix:Array<Array<number>> = [
+        [null, null, null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, null, null]
+    ];
 
     createHLine(index: number) {
         return <line 
@@ -49,8 +61,6 @@ export class Game extends React.Component<{}, {balls: Array<BallInfo>}> {
             x2={Game.GRID_SIZE * index + Game.OFFSET_LEFT}/>
     }
 
-
-
     createHLines() {
         const ret = new Array<React.ReactNode>();
         for (let i: number = 0; i < Game.GRID_COUNT + 1; i++) {
@@ -69,7 +79,7 @@ export class Game extends React.Component<{}, {balls: Array<BallInfo>}> {
 
     constructor(props: {}) {
         super(props);
-        this.state = {balls: new Array<BallInfo>()};
+        this.state = {balls: new Array<BallInfo>(), selectedBallId: null};
     }
 
     handleClick(e: React.MouseEvent<HTMLDivElement>) {
@@ -81,15 +91,22 @@ export class Game extends React.Component<{}, {balls: Array<BallInfo>}> {
         const gridX = Math.floor((x - Game.OFFSET_LEFT) / Game.GRID_SIZE);
         const gridY = Math.floor((y - Game.OFFSET_LEFT) / Game.GRID_SIZE);
         console.log(`touch column ${gridX}, line ${gridY}`);
-        this.setState({
-            balls:this.state.balls.concat({id: Game.ballIdSeq++, gridX: gridX, gridY: gridY})
-        });
+        if (this.ballMatrix[gridX][gridY] != null) {
+            this.setState({selectedBallId: this.ballMatrix[gridX][gridY]})
+        } else {
+            this.ballMatrix[gridX][gridY] = this.ballIdSeq;
+            this.setState({
+                balls:this.state.balls.concat({id: this.ballIdSeq++, gridX: gridX, gridY: gridY}),
+                selectedBallId: null
+            });
+        }
     }
 
 
     render() {
         let ballComponents = this.state.balls.map((ball)=>{
-            return <BallComponent key={ball.id} ballInfo={ball} />;
+            const selected: boolean = ball.id == this.state.selectedBallId;
+            return <BallComponent key={ball.id} ballInfo={ball} selected={selected}/>;
         });
         return (
             <div>
