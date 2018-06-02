@@ -82,6 +82,16 @@ export class Game extends React.Component<{}, {balls: Array<BallInfo>, selectedB
         this.state = {balls: new Array<BallInfo>(), selectedBallId: null};
     }
 
+    findBallById(id: number): BallInfo {
+        const ret: Array<BallInfo> = this.state.balls.filter((ballInfo: BallInfo, index: number, array: BallInfo[]): boolean => {
+            return ballInfo.id == id;
+        });
+        if (ret != null && ret.length != 0) {
+            return ret[0];
+        }
+        return null;
+    }
+
     handleClick(e: React.MouseEvent<HTMLDivElement>) {
         const x = e.nativeEvent.offsetX;
         const y = e.nativeEvent.offsetY;
@@ -92,13 +102,32 @@ export class Game extends React.Component<{}, {balls: Array<BallInfo>, selectedB
         const gridY = Math.floor((y - Game.OFFSET_LEFT) / Game.GRID_SIZE);
         console.log(`touch column ${gridX}, line ${gridY}`);
         if (this.ballMatrix[gridX][gridY] != null) {
+            // click a ball
             this.setState({selectedBallId: this.ballMatrix[gridX][gridY]})
         } else {
-            this.ballMatrix[gridX][gridY] = this.ballIdSeq;
-            this.setState({
-                balls:this.state.balls.concat({id: this.ballIdSeq++, gridX: gridX, gridY: gridY}),
-                selectedBallId: null
-            });
+            // click empty grid
+            if (this.state.selectedBallId == null) {
+                // no selected ball
+                this.ballMatrix[gridX][gridY] = this.ballIdSeq;
+                this.setState({
+                    balls:this.state.balls.concat({id: this.ballIdSeq++, gridX: gridX, gridY: gridY}),
+                    selectedBallId: null
+                });
+            } else {
+                // select a ball, move to new grid
+                const selectedBall:BallInfo = this.findBallById(this.state.selectedBallId);
+                if (selectedBall != null) {
+                    this.ballMatrix[selectedBall.gridX][selectedBall.gridY] = null;
+                    selectedBall.gridX = gridX;
+                    selectedBall.gridY = gridY;
+                    this.ballMatrix[selectedBall.gridX][selectedBall.gridY] = selectedBall.id;
+                    this.setState({
+                        selectedBallId: null
+                    });
+
+                }
+
+            }
         }
     }
 
