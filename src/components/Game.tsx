@@ -103,7 +103,7 @@ class BallComponent extends React.Component<{ballInfo: BallInfo, selected: boole
         this.state = {};
     }
 
-    handleTransitionEnd(e: React.TransitionEvent<SVGRectElement>) {
+    handleTransitionEnd(e: React.TransitionEvent<SVGCircleElement>) {
         if (e.nativeEvent.propertyName == 'transform') {
             if (!this.props.ballInfo.path.isPathOver()) {
                 this.props.ballInfo.moveToNextNode();
@@ -129,13 +129,12 @@ class BallComponent extends React.Component<{ballInfo: BallInfo, selected: boole
             style.transition = `all ${0.1 * this.props.ballInfo.getCurrentPathDistance()}s linear`;
         }
 
-        return <rect 
+        return <circle 
             className={this.props.selected ? "rect-ball-selected": "rect-ball"}
             style={style}
-            x={Game.OFFSET_TOP + this.props.ballInfo.gridX * Game.GRID_SIZE + BallComponent.margin} 
-            y={Game.OFFSET_TOP + this.props.ballInfo.gridY * Game.GRID_SIZE + BallComponent.margin} 
-            width={Game.GRID_SIZE - BallComponent.margin * 2}
-            height={Game.GRID_SIZE - BallComponent.margin * 2}
+            cx={Game.OFFSET_TOP + (this.props.ballInfo.gridX + 0.5) * Game.GRID_SIZE} 
+            cy={Game.OFFSET_TOP + (this.props.ballInfo.gridY + 0.5) * Game.GRID_SIZE} 
+            r={(Game.GRID_SIZE - BallComponent.margin) / 2}
             onTransitionEnd={(e) => this.handleTransitionEnd(e)}
         />
     }
