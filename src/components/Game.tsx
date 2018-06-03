@@ -1,22 +1,142 @@
 import * as React from 'react';
-interface BallInfo {
+class BallInfo {
+    constructor(id: number, gridX: number, gridY: number) {
+        this.id = id;
+        this.gridX = gridX;
+        this.gridY = gridY;
+        this.path = null;
+    }
+
     id: number;
     gridX: number;
     gridY: number;
+    path: PathInfo;
+
+    moveToNextNode() {
+        if (this.path != null) {
+            this.path.moveToNextNode();
+        }
+    }
+
+    getCurrentPathX(): number {
+        if (this.path != null) {
+            return this.path.getCurrentX();
+        } else {
+            return null;
+        }
+    }
+
+    getCurrentPathY(): number {
+        if (this.path != null) {
+            return this.path.getCurrentY();
+        } else {
+            return null;
+        }
+    }
+
+    getCurrentPathDistance(): number {
+        if (this.path != null) {
+            return this.path.getCurrentDistance();
+        } else {
+            return null;
+        }
+    }
 }
-class BallComponent extends React.Component<{ballInfo: BallInfo, selected: boolean},{}> {
+
+class NodeInfo {
+    constructor(gridX: number, gridY: number, distance: number) {
+        this.gridX = gridX;
+        this.gridY = gridY;
+        this.distance = distance;
+    }
+    gridX: number;
+    gridY: number;
+
+    distance: number;
+}
+
+class PathInfo {
+    constructor() {
+        this.nodes = new Array<NodeInfo>();
+        this.currentNode = -1;
+    }
+    nodes: Array<NodeInfo>;
+    currentNode: number;
+
+    moveToNextNode() {
+        this.currentNode++;
+    }
+
+    getCurrentDistance(): number {
+        if (this.currentNode < this.nodes.length) {
+            return this.nodes[this.currentNode].distance;
+        } else {
+            return null;
+        }
+    }
+
+    getCurrentX(): number {
+        if (this.currentNode < this.nodes.length) {
+            return this.nodes[this.currentNode].gridX;
+        } else {
+            return null;
+        }
+    }
+
+    getCurrentY(): number {
+        if (this.currentNode < this.nodes.length) {
+            return this.nodes[this.currentNode].gridY;
+        } else {
+            return null;
+        }
+    }
+
+    isPathOver() {
+        return this.currentNode == this.nodes.length - 1;
+    }
+}
+
+class BallComponent extends React.Component<{ballInfo: BallInfo, selected: boolean, game: Game},{}> {
     static margin: number = 3;
-    constructor(props: {ballInfo: BallInfo, selected: boolean}) {
+    constructor(props: {ballInfo: BallInfo, selected: boolean, game: Game}) {
         super(props);
+        this.state = {};
+    }
+
+    handleTransitionEnd(e: React.TransitionEvent<SVGRectElement>) {
+        if (e.nativeEvent.propertyName == 'transform') {
+            if (!this.props.ballInfo.path.isPathOver()) {
+                this.props.ballInfo.moveToNextNode();
+                this.setState({});
+            } else {
+                const newGridX = this.props.ballInfo.getCurrentPathX();
+                const newGridY = this.props.ballInfo.getCurrentPathY();
+                this.props.ballInfo.path = null;
+                this.props.game.notifyBallMovedComplite(this.props.ballInfo, newGridX, newGridY);
+            }
+        }
     }
 
     render() {
+        const style:React.CSSProperties = {};
+
+        if (this.props.ballInfo.path != null && this.props.ballInfo.path.currentNode >= 0) {
+            const offsetX = (this.props.ballInfo.getCurrentPathX() - this.props.ballInfo.gridX) * Game.GRID_SIZE;
+            const offsetY = (this.props.ballInfo.getCurrentPathY() - this.props.ballInfo.gridY) * Game.GRID_SIZE;
+
+
+            style.transform = `translate(${offsetX}px, ${offsetY}px)`;
+            style.transition = `all ${0.1 * this.props.ballInfo.getCurrentPathDistance()}s linear`;
+        }
+
         return <rect 
             className={this.props.selected ? "rect-ball-selected": "rect-ball"}
+            style={style}
             x={Game.OFFSET_TOP + this.props.ballInfo.gridX * Game.GRID_SIZE + BallComponent.margin} 
             y={Game.OFFSET_TOP + this.props.ballInfo.gridY * Game.GRID_SIZE + BallComponent.margin} 
             width={Game.GRID_SIZE - BallComponent.margin * 2}
             height={Game.GRID_SIZE - BallComponent.margin * 2}
+            onTransitionEnd={(e) => this.handleTransitionEnd(e)}
         />
     }
 
@@ -77,6 +197,20 @@ export class Game extends React.Component<{}, {balls: Array<BallInfo>, selectedB
         return ret;
     }
 
+    calPath(ballInfo:BallInfo, targetGridX: number, targetGridY: number): PathInfo {
+        const path = new PathInfo();
+        if (ballInfo.gridX == targetGridX) {
+            path.nodes = path.nodes.concat(new NodeInfo(targetGridX, targetGridY, Math.abs(targetGridY - ballInfo.gridY)));
+        } else if (ballInfo.gridY == targetGridY) {
+            path.nodes = path.nodes.concat(new NodeInfo(targetGridX, targetGridY, Math.abs(targetGridX - ballInfo.gridX)));
+        } else {
+            path.nodes = path.nodes.concat(new NodeInfo(ballInfo.gridX, targetGridY, Math.abs(targetGridY - ballInfo.gridY)));
+            path.nodes = path.nodes.concat(new NodeInfo(targetGridX, targetGridY, Math.abs(targetGridX - ballInfo.gridX)));
+        }
+
+        return path;
+    }
+
     constructor(props: {}) {
         super(props);
         this.state = {balls: new Array<BallInfo>(), selectedBallId: null};
@@ -110,32 +244,40 @@ export class Game extends React.Component<{}, {balls: Array<BallInfo>, selectedB
                 // no selected ball
                 this.ballMatrix[gridX][gridY] = this.ballIdSeq;
                 this.setState({
-                    balls:this.state.balls.concat({id: this.ballIdSeq++, gridX: gridX, gridY: gridY}),
+                    balls:this.state.balls.concat(new BallInfo(this.ballIdSeq++, gridX, gridY)),
                     selectedBallId: null
                 });
             } else {
                 // select a ball, move to new grid
                 const selectedBall:BallInfo = this.findBallById(this.state.selectedBallId);
                 if (selectedBall != null) {
-                    this.ballMatrix[selectedBall.gridX][selectedBall.gridY] = null;
-                    selectedBall.gridX = gridX;
-                    selectedBall.gridY = gridY;
-                    this.ballMatrix[selectedBall.gridX][selectedBall.gridY] = selectedBall.id;
+                    const path = this.calPath(selectedBall, gridX, gridY);
+                    selectedBall.path = path;
+                    
+                    selectedBall.moveToNextNode();
                     this.setState({
                         selectedBallId: null
                     });
-
                 }
-
             }
         }
+    }
+
+    notifyBallMovedComplite(selectedBall: BallInfo, newGridX: number, newGridY: number) {
+        this.ballMatrix[selectedBall.gridX][selectedBall.gridY] = null;
+        selectedBall.gridX = newGridX;
+        selectedBall.gridY = newGridY;
+        this.ballMatrix[selectedBall.gridX][selectedBall.gridY] = selectedBall.id;
+        this.setState({
+            selectedBallId: null
+        });
     }
 
 
     render() {
         let ballComponents = this.state.balls.map((ball)=>{
             const selected: boolean = ball.id == this.state.selectedBallId;
-            return <BallComponent key={ball.id} ballInfo={ball} selected={selected}/>;
+            return <BallComponent key={ball.id} ballInfo={ball} selected={selected} game={this}/>;
         });
         return (
             <div>
