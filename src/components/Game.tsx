@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { RouteMap, GridLocation } from '../lib/Route';
 class BallInfo {
     constructor(id: number, gridX: number, gridY: number) {
         this.id = id;
@@ -148,6 +149,8 @@ export class Game extends React.Component<{}, {balls: Array<BallInfo>, selectedB
     static GRID_COUNT = 9;
     ballIdSeq = 1;
 
+    routeMap: RouteMap;
+
     ballMatrix:Array<Array<number>> = [
         [null, null, null, null, null, null, null, null, null],
         [null, null, null, null, null, null, null, null, null],
@@ -197,21 +200,23 @@ export class Game extends React.Component<{}, {balls: Array<BallInfo>, selectedB
     }
 
     calPath(ballInfo:BallInfo, targetGridX: number, targetGridY: number): PathInfo {
-        const path = new PathInfo();
-        if (ballInfo.gridX == targetGridX) {
-            path.nodes = path.nodes.concat(new NodeInfo(targetGridX, targetGridY, Math.abs(targetGridY - ballInfo.gridY)));
-        } else if (ballInfo.gridY == targetGridY) {
-            path.nodes = path.nodes.concat(new NodeInfo(targetGridX, targetGridY, Math.abs(targetGridX - ballInfo.gridX)));
-        } else {
-            path.nodes = path.nodes.concat(new NodeInfo(ballInfo.gridX, targetGridY, Math.abs(targetGridY - ballInfo.gridY)));
-            path.nodes = path.nodes.concat(new NodeInfo(targetGridX, targetGridY, Math.abs(targetGridX - ballInfo.gridX)));
+        const pathInfo = new PathInfo();
+        this.routeMap.unfillNode(ballInfo.gridX, ballInfo.gridY);
+        const path = this.routeMap.calPath(ballInfo.gridX, ballInfo.gridY, targetGridX, targetGridY);
+        if (path.distance === 999) {
+            return null;
         }
-
-        return path;
+        pathInfo.nodes = path.path.map(
+            (djNode) => {
+                return new NodeInfo((djNode.nodeExt as GridLocation).x, (djNode.nodeExt as GridLocation).y, 1);
+            }
+        );
+        return pathInfo;
     }
 
     constructor(props: {}) {
         super(props);
+        this.routeMap = new RouteMap(Game.GRID_COUNT);
         this.state = {balls: new Array<BallInfo>(), selectedBallId: null};
     }
 
@@ -242,6 +247,7 @@ export class Game extends React.Component<{}, {balls: Array<BallInfo>, selectedB
             if (this.state.selectedBallId == null) {
                 // no selected ball
                 this.ballMatrix[gridX][gridY] = this.ballIdSeq;
+                this.routeMap.fillNode(gridX, gridY);
                 this.setState({
                     balls:this.state.balls.concat(new BallInfo(this.ballIdSeq++, gridX, gridY)),
                     selectedBallId: null
