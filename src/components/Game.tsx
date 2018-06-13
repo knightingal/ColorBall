@@ -257,6 +257,7 @@ export class Game extends React.Component<{}, {balls: Array<BallInfo>, selectedB
                 const selectedBall:BallInfo = this.findBallById(this.state.selectedBallId);
                 if (selectedBall != null) {
                     const path = this.calPath(selectedBall, gridX, gridY);
+                    this.routeMap.fillNode(gridX, gridY);
                     selectedBall.path = path;
                     
                     selectedBall.moveToNextNode();
