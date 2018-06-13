@@ -1,17 +1,20 @@
 import * as React from 'react';
 import { RouteMap, GridLocation } from '../lib/Route';
+import { randomNumber } from '../lib/Utils';
 class BallInfo {
     constructor(id: number, gridX: number, gridY: number) {
         this.id = id;
         this.gridX = gridX;
         this.gridY = gridY;
         this.path = null;
+        this.color = Colors[randomNumber(Colors.length)];
     }
 
     id: number;
     gridX: number;
     gridY: number;
     path: PathInfo;
+    color: string;
 
     moveToNextNode() {
         if (this.path != null) {
@@ -130,8 +133,12 @@ class BallComponent extends React.Component<{ballInfo: BallInfo, selected: boole
             style.transition = `all ${0.1 * this.props.ballInfo.getCurrentPathDistance()}s linear`;
         }
 
+        if (!this.props.selected) {
+            style.fill = this.props.ballInfo.color;
+        }
+
         return <circle 
-            className={this.props.selected ? "rect-ball-selected": "rect-ball"}
+            className={this.props.selected ? "rect-ball-selected": null}
             style={style}
             cx={Game.OFFSET_TOP + (this.props.ballInfo.gridX + 0.5) * Game.GRID_SIZE} 
             cy={Game.OFFSET_TOP + (this.props.ballInfo.gridY + 0.5) * Game.GRID_SIZE} 
@@ -297,3 +304,10 @@ export class Game extends React.Component<{}, {balls: Array<BallInfo>, selectedB
         )
     }
 }
+
+const Colors = [
+    "blue",
+    "red",
+    "yellow",
+    "lime",
+];
