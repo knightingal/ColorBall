@@ -1,6 +1,9 @@
 import * as React from 'react';
 import { RouteMap, GridLocation } from '../lib/Route';
 import { randomNumber } from '../lib/Utils';
+
+const DEBUG=false;
+
 class BallInfo {
     constructor(id: number, gridX: number, gridY: number) {
         this.id = id;
@@ -100,6 +103,15 @@ class PathInfo {
     }
 }
 
+
+const BallNumberComponent = (props: {ballInfo: BallInfo}) => DEBUG ? <text 
+            x={props.ballInfo.gridX * Game.GRID_SIZE + Game.OFFSET_TOP} 
+            y={(props.ballInfo.gridY + 1) * Game.GRID_SIZE + Game.OFFSET_TOP}
+            fill="black" 
+        >{props.ballInfo.id}</text> 
+        : null;
+
+
 class BallComponent extends React.Component<{ballInfo: BallInfo, selected: boolean, game: Game},{}> {
     static margin: number = 3;
     constructor(props: {ballInfo: BallInfo, selected: boolean, game: Game}) {
@@ -144,7 +156,8 @@ class BallComponent extends React.Component<{ballInfo: BallInfo, selected: boole
             cy={Game.OFFSET_TOP + (this.props.ballInfo.gridY + 0.5) * Game.GRID_SIZE} 
             r={(Game.GRID_SIZE - BallComponent.margin) / 2}
             onTransitionEnd={(e) => this.handleTransitionEnd(e)}
-        />
+        /> 
+        
     }
 
 }
@@ -281,16 +294,139 @@ export class Game extends React.Component<{}, {balls: Array<BallInfo>, selectedB
         selectedBall.gridX = newGridX;
         selectedBall.gridY = newGridY;
         this.ballMatrix[selectedBall.gridX][selectedBall.gridY] = selectedBall.id;
+
+        const checkLineRet = this.checkLine(newGridX, newGridY);
         this.setState({
             selectedBallId: null
         });
     }
 
+    checkLine(gridX: number, gridY: number): Array<number> {
+        // return null;
+        const currentColor = this.findBallById(this.ballMatrix[gridX][gridY]).color;
+        let nextGridX: number;
+        let nextGridY: number;
+        const horizon = [this.ballMatrix[gridX][gridY]];
+        nextGridX = gridX;
+        nextGridY = gridY;
+        while(true) {
+            nextGridX++
+            if (nextGridX < Game.GRID_COUNT && (this.ballMatrix[nextGridX][nextGridY] != null) && this.findBallById(this.ballMatrix[nextGridX][nextGridY]).color === currentColor) {
+                horizon.push(this.ballMatrix[nextGridX][nextGridY]);
+            } else {
+                break;
+            }
+        }
+        nextGridX = gridX;
+        nextGridY = gridY;
+        while(true) {
+            nextGridX--
+            if (nextGridX >= 0 && (this.ballMatrix[nextGridX][nextGridY] != null) && this.findBallById(this.ballMatrix[nextGridX][nextGridY]).color === currentColor) {
+                horizon.push(this.ballMatrix[nextGridX][nextGridY]);
+            } else {
+                break;
+            }
+        }
+
+        const vertical = [this.ballMatrix[gridX][gridY]];
+        nextGridX = gridX;
+        nextGridY = gridY;
+        while(true) {
+            nextGridY++
+            if (nextGridY < Game.GRID_COUNT && (this.ballMatrix[nextGridX][nextGridY] != null) && this.findBallById(this.ballMatrix[nextGridX][nextGridY]).color === currentColor) {
+                vertical.push(this.ballMatrix[nextGridX][nextGridY]);
+            } else {
+                break;
+            }
+        }
+        nextGridX = gridX;
+        nextGridY = gridY;
+        while(true) {
+            nextGridY--
+            if (nextGridY >= 0 && (this.ballMatrix[nextGridX][nextGridY] != null) && this.findBallById(this.ballMatrix[nextGridX][nextGridY]).color === currentColor) {
+                vertical.push(this.ballMatrix[nextGridX][nextGridY]);
+            } else {
+                break;
+            }
+        }
+
+        
+        const backslash = [this.ballMatrix[gridX][gridY]];
+        nextGridX = gridX;
+        nextGridY = gridY;
+        while(true) {
+            nextGridX++
+            nextGridY++
+            if (nextGridX < Game.GRID_COUNT && nextGridY < Game.GRID_COUNT && (this.ballMatrix[nextGridX][nextGridY] != null) && this.findBallById(this.ballMatrix[nextGridX][nextGridY]).color === currentColor) {
+                backslash.push(this.ballMatrix[nextGridX][nextGridY]);
+            } else {
+                break;
+            }
+        }
+        nextGridX = gridX;
+        nextGridY = gridY;
+        while(true) {
+            nextGridX--
+            nextGridY--
+            if (nextGridX >= 0 && nextGridY >= 0 && (this.ballMatrix[nextGridX][nextGridY] != null) && this.findBallById(this.ballMatrix[nextGridX][nextGridY]).color === currentColor) {
+                backslash.push(this.ballMatrix[nextGridX][nextGridY]);
+            } else {
+                break;
+            }
+        }
+
+        const diagonal = [this.ballMatrix[gridX][gridY]];
+        nextGridX = gridX;
+        nextGridY = gridY;
+        while(true) {
+            nextGridX--
+            nextGridY++
+            if (nextGridX >= 0 && nextGridY < Game.GRID_COUNT && (this.ballMatrix[nextGridX][nextGridY] != null) && this.findBallById(this.ballMatrix[nextGridX][nextGridY]).color === currentColor) {
+                diagonal.push(this.ballMatrix[nextGridX][nextGridY]);
+            } else {
+                break;
+            }
+        }
+        nextGridX = gridX;
+        nextGridY = gridY;
+        while(true) {
+            nextGridX++
+            nextGridY--
+            if (nextGridX < Game.GRID_COUNT && nextGridY >= 0 && (this.ballMatrix[nextGridX][nextGridY] != null) && this.findBallById(this.ballMatrix[nextGridX][nextGridY]).color === currentColor) {
+                diagonal.push(this.ballMatrix[nextGridX][nextGridY]);
+            } else {
+                break;
+            }
+        }
+
+        let ret = new Array<number>();
+        if (horizon.length >= 5) {
+            console.log(`a horizon made up, ${horizon}`)
+            ret = ret.concat(horizon);
+        }
+        if (vertical.length >= 5) {
+            console.log(`a vertical made up, ${vertical}`)
+            ret = ret.concat(vertical);
+        }
+        if (backslash.length >= 5) {
+            console.log(`a backslash made up, ${backslash}`)
+            ret = ret.concat(backslash);
+        }
+        if (diagonal.length >= 5) {
+            console.log(`a diagonal made up, ${diagonal}`)
+            ret = ret.concat(diagonal);
+        }
+
+        return ret;
+    }
 
     render() {
         let ballComponents = this.state.balls.map((ball)=>{
             const selected: boolean = ball.id == this.state.selectedBallId;
             return <BallComponent key={ball.id} ballInfo={ball} selected={selected} game={this}/>;
+        });
+        let ballNumberComponents = this.state.balls.map((ball) => {
+            return <BallNumberComponent key={ball.id} ballInfo={ball} />
         });
         return (
             <div>
@@ -298,6 +434,7 @@ export class Game extends React.Component<{}, {balls: Array<BallInfo>, selectedB
                 {this.createHLines()}        
                 {this.createVLines()}        
                 {ballComponents}
+                {ballNumberComponents}
             </svg>
             <div className="touch-layer" onClick={(e)=>this.handleClick(e)}></div>
             </div>
