@@ -313,7 +313,13 @@ export class Game extends React.Component<{}, {balls: Array<BallInfo>, selectedB
                     );
                 }
             );
-        } 
+        } else {
+            if (this.restEmptyGrid >= 3) {
+                balls = balls.concat(this.randAddBall()); 
+            } else {
+                alert("Game Over!");
+            }
+        }
         this.setState({
             balls: balls,
             selectedBallId: null
@@ -437,6 +443,27 @@ export class Game extends React.Component<{}, {balls: Array<BallInfo>, selectedB
         }
 
         return ret;
+    }
+
+    randAddBall(): Array<BallInfo> {
+        let randX;
+        let randY;
+        const retBalls = new Array<BallInfo>();
+        for (let i = 0; i < 3; i++) {
+            while (true) {
+                randX = randomNumber(Game.GRID_COUNT);
+                randY = randomNumber(Game.GRID_COUNT);
+                console.log(`randX=${randX}, randY=${randY}`);
+                if (this.ballMatrix[randX][randY] == null) {
+                    break;
+                }
+            }
+            this.ballMatrix[randX][randY] = this.ballIdSeq;
+            this.routeMap.fillNode(randX, randY);
+            retBalls.push(new BallInfo(this.ballIdSeq++, randX, randY));
+            this.restEmptyGrid--;
+        }
+        return retBalls;
     }
 
     render() {
