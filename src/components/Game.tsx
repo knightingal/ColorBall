@@ -183,6 +183,8 @@ export class Game extends React.Component<{}, {balls: Array<BallInfo>, selectedB
         [null, null, null, null, null, null, null, null, null]
     ];
 
+    restEmptyGrid: number = 81;
+
     createHLine(index: number) {
         return <line 
             className="game-line" 
@@ -272,6 +274,7 @@ export class Game extends React.Component<{}, {balls: Array<BallInfo>, selectedB
                     balls:this.state.balls.concat(new BallInfo(this.ballIdSeq++, gridX, gridY)),
                     selectedBallId: null
                 });
+                this.restEmptyGrid--;
             } else {
                 // select a ball, move to new grid
                 const selectedBall:BallInfo = this.findBallById(this.state.selectedBallId);
@@ -294,9 +297,25 @@ export class Game extends React.Component<{}, {balls: Array<BallInfo>, selectedB
         selectedBall.gridX = newGridX;
         selectedBall.gridY = newGridY;
         this.ballMatrix[selectedBall.gridX][selectedBall.gridY] = selectedBall.id;
-
+        let balls: Array<BallInfo> = this.state.balls;
         const checkLineRet = this.checkLine(newGridX, newGridY);
+        if (checkLineRet.length > 0) {
+            checkLineRet.forEach(
+                (value: number) => {
+                    const node: BallInfo = this.findBallById(value);
+                    this.routeMap.unfillNode(node.gridX, node.gridY);
+                    this.ballMatrix[node.gridX][node.gridY] = null;
+                    this.restEmptyGrid++;
+                    balls = balls.filter(
+                        (ball: BallInfo) => {
+                            return ball.id != node.id;
+                        }
+                    );
+                }
+            );
+        } 
         this.setState({
+            balls: balls,
             selectedBallId: null
         });
     }
