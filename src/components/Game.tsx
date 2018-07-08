@@ -255,6 +255,7 @@ export class Game extends React.Component<{}, {balls: Array<BallInfo>, selectedB
     handleClick(e: React.MouseEvent<HTMLDivElement>) {
         const x = e.nativeEvent.offsetX;
         const y = e.nativeEvent.offsetY;
+        console.log(`x=${x}, y=${y}`);
         if (x < Game.OFFSET_LEFT || y < Game.OFFSET_TOP || x > Game.GRID_COUNT * Game.GRID_SIZE || y > Game.GRID_COUNT * Game.GRID_SIZE) {
             return;
         }
@@ -474,15 +475,20 @@ export class Game extends React.Component<{}, {balls: Array<BallInfo>, selectedB
         let ballNumberComponents = this.state.balls.map((ball) => {
             return <BallNumberComponent key={ball.id} ballInfo={ball} />
         });
+        const layoutWidth = `${Game.GRID_SIZE * Game.GRID_COUNT + Game.OFFSET_LEFT * 2}px`;
+        const layoutHeight = `${Game.GRID_SIZE * Game.GRID_COUNT + Game.OFFSET_TOP * 2}px`;
+        const touchLayoutStyle: React.CSSProperties = {}; 
+        touchLayoutStyle.height = layoutHeight;
+        touchLayoutStyle.width = layoutWidth;
         return (
-            <div>
-            <svg className="game-svg" width="1000px" height="1000px" version="1.1" xmlns="http://www.w3.org/2000/svg">
+            <div className="container">
+            <svg className="game-svg" width={layoutWidth} height={layoutHeight} version="1.1" xmlns="http://www.w3.org/2000/svg">
                 {this.createHLines()}        
                 {this.createVLines()}        
                 {ballComponents}
                 {ballNumberComponents}
             </svg>
-            <div className="touch-layer" onClick={(e)=>this.handleClick(e)}></div>
+            <div className="touch-layer" style={touchLayoutStyle} onClick={(e)=>this.handleClick(e)}></div>
             </div>
         )
     }
