@@ -481,7 +481,7 @@ export class Game extends React.Component<{}, {balls: Array<BallInfo>, selectedB
         touchLayoutStyle.height = layoutHeight;
         touchLayoutStyle.width = layoutWidth;
         return (
-            <div className="container">
+            <div className="container" style={touchLayoutStyle}>
             <svg className="game-svg" width={layoutWidth} height={layoutHeight} version="1.1" xmlns="http://www.w3.org/2000/svg">
                 {this.createHLines()}        
                 {this.createVLines()}        
