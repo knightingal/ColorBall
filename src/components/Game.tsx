@@ -171,6 +171,7 @@ export class Game extends React.Component<{}, {balls: Array<BallInfo>, selectedB
 
     routeMap: RouteMap;
 
+
     ballMatrix:Array<Array<number>> = [
         [null, null, null, null, null, null, null, null, null],
         [null, null, null, null, null, null, null, null, null],
@@ -239,7 +240,7 @@ export class Game extends React.Component<{}, {balls: Array<BallInfo>, selectedB
     constructor(props: {}) {
         super(props);
         this.routeMap = new RouteMap(Game.GRID_COUNT);
-        this.state = {balls: new Array<BallInfo>(), selectedBallId: null};
+        this.state = {balls: this.randAddBall(), selectedBallId: null};
     }
 
     findBallById(id: number): BallInfo {
@@ -269,13 +270,13 @@ export class Game extends React.Component<{}, {balls: Array<BallInfo>, selectedB
             // click empty grid
             if (this.state.selectedBallId == null) {
                 // no selected ball
-                this.ballMatrix[gridX][gridY] = this.ballIdSeq;
-                this.routeMap.fillNode(gridX, gridY);
-                this.setState({
-                    balls:this.state.balls.concat(new BallInfo(this.ballIdSeq++, gridX, gridY)),
-                    selectedBallId: null
-                });
-                this.restEmptyGrid--;
+                // this.ballMatrix[gridX][gridY] = this.ballIdSeq;
+                // this.routeMap.fillNode(gridX, gridY);
+                // this.setState({
+                //     balls:this.state.balls.concat(new BallInfo(this.ballIdSeq++, gridX, gridY)),
+                //     selectedBallId: null
+                // });
+                // this.restEmptyGrid--;
             } else {
                 // select a ball, move to new grid
                 const selectedBall:BallInfo = this.findBallById(this.state.selectedBallId);
