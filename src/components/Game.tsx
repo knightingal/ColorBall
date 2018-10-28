@@ -1,16 +1,23 @@
 import * as React from 'react';
+import { RouteMap, GridLocation } from '../lib/Route';
+import { randomNumber } from '../lib/Utils';
+
+const DEBUG=false;
+
 class BallInfo {
     constructor(id: number, gridX: number, gridY: number) {
         this.id = id;
         this.gridX = gridX;
         this.gridY = gridY;
         this.path = null;
+        this.color = Colors[randomNumber(Colors.length)];
     }
 
     id: number;
     gridX: number;
     gridY: number;
     path: PathInfo;
+    color: string;
 
     moveToNextNode() {
         if (this.path != null) {
@@ -96,6 +103,15 @@ class PathInfo {
     }
 }
 
+
+const BallNumberComponent = (props: {ballInfo: BallInfo}) => DEBUG ? <text 
+            x={props.ballInfo.gridX * Game.GRID_SIZE + Game.OFFSET_TOP} 
+            y={(props.ballInfo.gridY + 1) * Game.GRID_SIZE + Game.OFFSET_TOP}
+            fill="black" 
+        >{props.ballInfo.id}</text> 
+        : null;
+
+
 class BallComponent extends React.Component<{ballInfo: BallInfo, selected: boolean, game: Game},{}> {
     static margin: number = 3;
     constructor(props: {ballInfo: BallInfo, selected: boolean, game: Game}) {
@@ -129,14 +145,19 @@ class BallComponent extends React.Component<{ballInfo: BallInfo, selected: boole
             style.transition = `all ${0.1 * this.props.ballInfo.getCurrentPathDistance()}s linear`;
         }
 
+        if (!this.props.selected) {
+            style.fill = this.props.ballInfo.color;
+        }
+
         return <circle 
-            className={this.props.selected ? "rect-ball-selected": "rect-ball"}
+            className={this.props.selected ? "rect-ball-selected": null}
             style={style}
             cx={Game.OFFSET_TOP + (this.props.ballInfo.gridX + 0.5) * Game.GRID_SIZE} 
             cy={Game.OFFSET_TOP + (this.props.ballInfo.gridY + 0.5) * Game.GRID_SIZE} 
             r={(Game.GRID_SIZE - BallComponent.margin) / 2}
             onTransitionEnd={(e) => this.handleTransitionEnd(e)}
-        />
+        /> 
+        
     }
 
 }
@@ -147,6 +168,9 @@ export class Game extends React.Component<{}, {balls: Array<BallInfo>, selectedB
     static GRID_SIZE = 30;
     static GRID_COUNT = 9;
     ballIdSeq = 1;
+
+    routeMap: RouteMap;
+
 
     ballMatrix:Array<Array<number>> = [
         [null, null, null, null, null, null, null, null, null],
@@ -159,6 +183,8 @@ export class Game extends React.Component<{}, {balls: Array<BallInfo>, selectedB
         [null, null, null, null, null, null, null, null, null],
         [null, null, null, null, null, null, null, null, null]
     ];
+
+    restEmptyGrid: number = 81;
 
     createHLine(index: number) {
         return <line 
@@ -197,22 +223,24 @@ export class Game extends React.Component<{}, {balls: Array<BallInfo>, selectedB
     }
 
     calPath(ballInfo:BallInfo, targetGridX: number, targetGridY: number): PathInfo {
-        const path = new PathInfo();
-        if (ballInfo.gridX == targetGridX) {
-            path.nodes = path.nodes.concat(new NodeInfo(targetGridX, targetGridY, Math.abs(targetGridY - ballInfo.gridY)));
-        } else if (ballInfo.gridY == targetGridY) {
-            path.nodes = path.nodes.concat(new NodeInfo(targetGridX, targetGridY, Math.abs(targetGridX - ballInfo.gridX)));
-        } else {
-            path.nodes = path.nodes.concat(new NodeInfo(ballInfo.gridX, targetGridY, Math.abs(targetGridY - ballInfo.gridY)));
-            path.nodes = path.nodes.concat(new NodeInfo(targetGridX, targetGridY, Math.abs(targetGridX - ballInfo.gridX)));
+        const pathInfo = new PathInfo();
+        this.routeMap.unfillNode(ballInfo.gridX, ballInfo.gridY);
+        const path = this.routeMap.calPath(ballInfo.gridX, ballInfo.gridY, targetGridX, targetGridY);
+        if (path.distance === 999) {
+            return null;
         }
-
-        return path;
+        pathInfo.nodes = path.path.map(
+            (djNode) => {
+                return new NodeInfo((djNode.nodeExt as GridLocation).x, (djNode.nodeExt as GridLocation).y, 1);
+            }
+        );
+        return pathInfo;
     }
 
     constructor(props: {}) {
         super(props);
-        this.state = {balls: new Array<BallInfo>(), selectedBallId: null};
+        this.routeMap = new RouteMap(Game.GRID_COUNT);
+        this.state = {balls: this.randAddBall(), selectedBallId: null};
     }
 
     findBallById(id: number): BallInfo {
@@ -228,6 +256,7 @@ export class Game extends React.Component<{}, {balls: Array<BallInfo>, selectedB
     handleClick(e: React.MouseEvent<HTMLDivElement>) {
         const x = e.nativeEvent.offsetX;
         const y = e.nativeEvent.offsetY;
+        console.log(`x=${x}, y=${y}`);
         if (x < Game.OFFSET_LEFT || y < Game.OFFSET_TOP || x > Game.GRID_COUNT * Game.GRID_SIZE || y > Game.GRID_COUNT * Game.GRID_SIZE) {
             return;
         }
@@ -241,16 +270,19 @@ export class Game extends React.Component<{}, {balls: Array<BallInfo>, selectedB
             // click empty grid
             if (this.state.selectedBallId == null) {
                 // no selected ball
-                this.ballMatrix[gridX][gridY] = this.ballIdSeq;
-                this.setState({
-                    balls:this.state.balls.concat(new BallInfo(this.ballIdSeq++, gridX, gridY)),
-                    selectedBallId: null
-                });
+                // this.ballMatrix[gridX][gridY] = this.ballIdSeq;
+                // this.routeMap.fillNode(gridX, gridY);
+                // this.setState({
+                //     balls:this.state.balls.concat(new BallInfo(this.ballIdSeq++, gridX, gridY)),
+                //     selectedBallId: null
+                // });
+                // this.restEmptyGrid--;
             } else {
                 // select a ball, move to new grid
                 const selectedBall:BallInfo = this.findBallById(this.state.selectedBallId);
                 if (selectedBall != null) {
                     const path = this.calPath(selectedBall, gridX, gridY);
+                    this.routeMap.fillNode(gridX, gridY);
                     selectedBall.path = path;
                     
                     selectedBall.moveToNextNode();
@@ -267,26 +299,205 @@ export class Game extends React.Component<{}, {balls: Array<BallInfo>, selectedB
         selectedBall.gridX = newGridX;
         selectedBall.gridY = newGridY;
         this.ballMatrix[selectedBall.gridX][selectedBall.gridY] = selectedBall.id;
+        let balls: Array<BallInfo> = this.state.balls;
+        const checkLineRet = this.checkLine(newGridX, newGridY);
+        if (checkLineRet.length > 0) {
+            checkLineRet.forEach(
+                (value: number) => {
+                    const node: BallInfo = this.findBallById(value);
+                    this.routeMap.unfillNode(node.gridX, node.gridY);
+                    this.ballMatrix[node.gridX][node.gridY] = null;
+                    this.restEmptyGrid++;
+                    balls = balls.filter(
+                        (ball: BallInfo) => {
+                            return ball.id != node.id;
+                        }
+                    );
+                }
+            );
+        } else {
+            if (this.restEmptyGrid >= 3) {
+                balls = balls.concat(this.randAddBall()); 
+            } else {
+                alert("Game Over!");
+            }
+        }
         this.setState({
+            balls: balls,
             selectedBallId: null
         });
     }
 
+    checkLine(gridX: number, gridY: number): Array<number> {
+        // return null;
+        const currentColor = this.findBallById(this.ballMatrix[gridX][gridY]).color;
+        let nextGridX: number;
+        let nextGridY: number;
+        const horizon = [this.ballMatrix[gridX][gridY]];
+        nextGridX = gridX;
+        nextGridY = gridY;
+        while(true) {
+            nextGridX++
+            if (nextGridX < Game.GRID_COUNT && (this.ballMatrix[nextGridX][nextGridY] != null) && this.findBallById(this.ballMatrix[nextGridX][nextGridY]).color === currentColor) {
+                horizon.push(this.ballMatrix[nextGridX][nextGridY]);
+            } else {
+                break;
+            }
+        }
+        nextGridX = gridX;
+        nextGridY = gridY;
+        while(true) {
+            nextGridX--
+            if (nextGridX >= 0 && (this.ballMatrix[nextGridX][nextGridY] != null) && this.findBallById(this.ballMatrix[nextGridX][nextGridY]).color === currentColor) {
+                horizon.push(this.ballMatrix[nextGridX][nextGridY]);
+            } else {
+                break;
+            }
+        }
+
+        const vertical = [this.ballMatrix[gridX][gridY]];
+        nextGridX = gridX;
+        nextGridY = gridY;
+        while(true) {
+            nextGridY++
+            if (nextGridY < Game.GRID_COUNT && (this.ballMatrix[nextGridX][nextGridY] != null) && this.findBallById(this.ballMatrix[nextGridX][nextGridY]).color === currentColor) {
+                vertical.push(this.ballMatrix[nextGridX][nextGridY]);
+            } else {
+                break;
+            }
+        }
+        nextGridX = gridX;
+        nextGridY = gridY;
+        while(true) {
+            nextGridY--
+            if (nextGridY >= 0 && (this.ballMatrix[nextGridX][nextGridY] != null) && this.findBallById(this.ballMatrix[nextGridX][nextGridY]).color === currentColor) {
+                vertical.push(this.ballMatrix[nextGridX][nextGridY]);
+            } else {
+                break;
+            }
+        }
+
+        
+        const backslash = [this.ballMatrix[gridX][gridY]];
+        nextGridX = gridX;
+        nextGridY = gridY;
+        while(true) {
+            nextGridX++
+            nextGridY++
+            if (nextGridX < Game.GRID_COUNT && nextGridY < Game.GRID_COUNT && (this.ballMatrix[nextGridX][nextGridY] != null) && this.findBallById(this.ballMatrix[nextGridX][nextGridY]).color === currentColor) {
+                backslash.push(this.ballMatrix[nextGridX][nextGridY]);
+            } else {
+                break;
+            }
+        }
+        nextGridX = gridX;
+        nextGridY = gridY;
+        while(true) {
+            nextGridX--
+            nextGridY--
+            if (nextGridX >= 0 && nextGridY >= 0 && (this.ballMatrix[nextGridX][nextGridY] != null) && this.findBallById(this.ballMatrix[nextGridX][nextGridY]).color === currentColor) {
+                backslash.push(this.ballMatrix[nextGridX][nextGridY]);
+            } else {
+                break;
+            }
+        }
+
+        const diagonal = [this.ballMatrix[gridX][gridY]];
+        nextGridX = gridX;
+        nextGridY = gridY;
+        while(true) {
+            nextGridX--
+            nextGridY++
+            if (nextGridX >= 0 && nextGridY < Game.GRID_COUNT && (this.ballMatrix[nextGridX][nextGridY] != null) && this.findBallById(this.ballMatrix[nextGridX][nextGridY]).color === currentColor) {
+                diagonal.push(this.ballMatrix[nextGridX][nextGridY]);
+            } else {
+                break;
+            }
+        }
+        nextGridX = gridX;
+        nextGridY = gridY;
+        while(true) {
+            nextGridX++
+            nextGridY--
+            if (nextGridX < Game.GRID_COUNT && nextGridY >= 0 && (this.ballMatrix[nextGridX][nextGridY] != null) && this.findBallById(this.ballMatrix[nextGridX][nextGridY]).color === currentColor) {
+                diagonal.push(this.ballMatrix[nextGridX][nextGridY]);
+            } else {
+                break;
+            }
+        }
+
+        let ret = new Array<number>();
+        if (horizon.length >= 5) {
+            console.log(`a horizon made up, ${horizon}`)
+            ret = ret.concat(horizon);
+        }
+        if (vertical.length >= 5) {
+            console.log(`a vertical made up, ${vertical}`)
+            ret = ret.concat(vertical);
+        }
+        if (backslash.length >= 5) {
+            console.log(`a backslash made up, ${backslash}`)
+            ret = ret.concat(backslash);
+        }
+        if (diagonal.length >= 5) {
+            console.log(`a diagonal made up, ${diagonal}`)
+            ret = ret.concat(diagonal);
+        }
+
+        return ret;
+    }
+
+    randAddBall(): Array<BallInfo> {
+        let randX;
+        let randY;
+        const retBalls = new Array<BallInfo>();
+        for (let i = 0; i < 3; i++) {
+            while (true) {
+                randX = randomNumber(Game.GRID_COUNT);
+                randY = randomNumber(Game.GRID_COUNT);
+                console.log(`randX=${randX}, randY=${randY}`);
+                if (this.ballMatrix[randX][randY] == null) {
+                    break;
+                }
+            }
+            this.ballMatrix[randX][randY] = this.ballIdSeq;
+            this.routeMap.fillNode(randX, randY);
+            retBalls.push(new BallInfo(this.ballIdSeq++, randX, randY));
+            this.restEmptyGrid--;
+        }
+        return retBalls;
+    }
 
     render() {
         let ballComponents = this.state.balls.map((ball)=>{
             const selected: boolean = ball.id == this.state.selectedBallId;
             return <BallComponent key={ball.id} ballInfo={ball} selected={selected} game={this}/>;
         });
+        let ballNumberComponents = this.state.balls.map((ball) => {
+            return <BallNumberComponent key={ball.id} ballInfo={ball} />
+        });
+        const layoutWidth = `${Game.GRID_SIZE * Game.GRID_COUNT + Game.OFFSET_LEFT * 2}px`;
+        const layoutHeight = `${Game.GRID_SIZE * Game.GRID_COUNT + Game.OFFSET_TOP * 2}px`;
+        const touchLayoutStyle: React.CSSProperties = {}; 
+        touchLayoutStyle.height = layoutHeight;
+        touchLayoutStyle.width = layoutWidth;
         return (
-            <div>
-            <svg className="game-svg" width="1000px" height="1000px" version="1.1" xmlns="http://www.w3.org/2000/svg">
+            <div className="container" style={touchLayoutStyle}>
+            <svg className="game-svg" width={layoutWidth} height={layoutHeight} version="1.1" xmlns="http://www.w3.org/2000/svg">
                 {this.createHLines()}        
                 {this.createVLines()}        
                 {ballComponents}
+                {ballNumberComponents}
             </svg>
-            <div className="touch-layer" onClick={(e)=>this.handleClick(e)}></div>
+            <div className="touch-layer" style={touchLayoutStyle} onClick={(e)=>this.handleClick(e)}></div>
             </div>
         )
     }
 }
+
+const Colors = [
+    "blue",
+    "red",
+    "yellow",
+    "lime",
+];
