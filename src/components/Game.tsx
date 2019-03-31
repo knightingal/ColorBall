@@ -165,10 +165,9 @@ class BallComponent extends React.Component<{ballInfo: BallInfo, selected: boole
 export class Game extends React.Component<{}, {balls: Array<BallInfo>, selectedBallId:number}> {
     static OFFSET_TOP = 3;
     static OFFSET_LEFT = 3;
-    static GRID_SIZE = 30;
+    static GRID_SIZE = 60;
     static GRID_COUNT = 9;
     ballIdSeq = 1;
-
     routeMap: RouteMap;
 
 
@@ -455,7 +454,6 @@ export class Game extends React.Component<{}, {balls: Array<BallInfo>, selectedB
             while (true) {
                 randX = randomNumber(Game.GRID_COUNT);
                 randY = randomNumber(Game.GRID_COUNT);
-                console.log(`randX=${randX}, randY=${randY}`);
                 if (this.ballMatrix[randX][randY] == null) {
                     break;
                 }
